@@ -1,9 +1,9 @@
 use std::env;
-use std::process::exit;
+use std::fs;
 use std::path::Path;
+use std::process::exit;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::fs;
 
 fn print_usage() {
 	println!("Hello");
@@ -26,7 +26,7 @@ fn main() {
 		}
 	};
 
-	if ! Path::new(&path).exists() {
+	if !Path::new(&path).exists() {
 		println!("{} does not exist, please set SPECULO_PATH correctly", path);
 		exit(1);
 	}
@@ -55,7 +55,12 @@ fn add(args: Vec<String>) {
 	if args.len() == 4 {
 		name = args.get(3).cloned().unwrap();
 	} else {
-		let split = url_str.split("/").collect::<Vec<&str>>().last().cloned().unwrap();
+		let split = url_str
+			.split("/")
+			.collect::<Vec<&str>>()
+			.last()
+			.cloned()
+			.unwrap();
 		let file = Path::new(split);
 		name = file.file_stem().unwrap().to_str().unwrap().to_string();
 	}
@@ -66,10 +71,10 @@ fn add(args: Vec<String>) {
 	}
 
 	let output = Command::new("sh")
-						.arg("-c")
-						.arg(format!("git clone {} {}", url_str, name))
-						.output()
-						.expect("Clone of failed");
+		.arg("-c")
+		.arg(format!("git clone {} {}", url_str, name))
+		.output()
+		.expect("Clone of failed");
 
 	if output.status.success() {
 		println!("Successfully cloned into {}", name);
@@ -87,19 +92,22 @@ fn mirror(args: Vec<String>) {
 	let repo = args.get(2).cloned().unwrap();
 	let url_str = args.get(3).cloned().unwrap();
 
-	if ! Path::new(&repo).exists() {
+	if !Path::new(&repo).exists() {
 		println!("{} does not exist", repo);
 		exit(1);
 	}
 
 	env::set_current_dir(&repo).unwrap();
 
-	let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+	let now = SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.unwrap()
+		.as_secs();
 	let output = Command::new("sh")
-						.arg("-c")
-						.arg(format!("git remote add mirror-{} {}", now, url_str))
-						.output()
-						.expect("Clone failed!");
+		.arg("-c")
+		.arg(format!("git remote add mirror-{} {}", now, url_str))
+		.output()
+		.expect("Clone failed!");
 
 	if output.status.success() {
 		println!("{} added as mirror to {}", url_str, repo);
@@ -114,24 +122,27 @@ fn push() {
 		let path = entry.path();
 		let metadata = fs::metadata(&path).unwrap();
 
-		if ! metadata.is_dir() {
+		if !metadata.is_dir() {
 			continue;
 		}
 
 		env::set_current_dir(path.clone()).unwrap();
 
-		if ! path.join(".git").exists() {
+		if !path.join(".git").exists() {
 			continue;
 		}
 
 		let output = Command::new("sh")
-							.arg("-c")
-							.arg("git remote | xargs -L1 git push --all")
-							.output()
-							.expect("Pushing failed!");
+			.arg("-c")
+			.arg("git remote | xargs -L1 git push --all")
+			.output()
+			.expect("Pushing failed!");
 
-		if ! output.status.success() {
-			println!("Push failed for {}", path.file_name().unwrap().to_str().unwrap());
+		if !output.status.success() {
+			println!(
+				"Push failed for {}",
+				path.file_name().unwrap().to_str().unwrap()
+			);
 			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
 		}
 	}
