@@ -3,6 +3,7 @@ use std::process::exit;
 use std::path::Path;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::fs;
 
 fn print_usage() {
 	println!("Hello");
@@ -34,6 +35,7 @@ fn main() {
 	match command.as_ref() {
 		"add" => add(args),
 		"mirror" => mirror(args),
+		"push" => push(),
 		_ => {
 			print_usage();
 			exit(1);
@@ -103,5 +105,34 @@ fn mirror(args: Vec<String>) {
 		println!("{} added as mirror to {}", url_str, repo);
 	} else {
 		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+	}
+}
+
+fn push() {
+	for entry in fs::read_dir(env::current_dir().unwrap()).unwrap() {
+		let entry = entry.unwrap();
+		let path = entry.path();
+		let metadata = fs::metadata(&path).unwrap();
+
+		if ! metadata.is_dir() {
+			continue;
+		}
+
+		env::set_current_dir(path.clone()).unwrap();
+
+		if ! path.join(".git").exists() {
+			continue;
+		}
+
+		let output = Command::new("sh")
+							.arg("-c")
+							.arg("git remote | xargs -L1 git push --all")
+							.output()
+							.expect("Pushing failed!");
+
+		if ! output.status.success() {
+			println!("Push failed for {}", path.file_name().unwrap().to_str().unwrap());
+			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+		}
 	}
 }
