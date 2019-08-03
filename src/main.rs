@@ -182,6 +182,18 @@ fn push() {
 			continue;
 		}
 
+		/* prune the master repo */
+		let output = Command::new("sh")
+			.arg("-c")
+			.arg("git remote prune origin")
+			.output()
+			.unwrap();
+
+		if !output.status.success() {
+			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+			continue;
+		}
+
 		/* update the mirrors */
 		let output = Command::new("sh")
 			.arg("-c")
