@@ -160,7 +160,7 @@ fn push() {
 
 		let output = Command::new("sh")
 			.arg("-c")
-			.arg("git remote | xargs -L1 git push --all")
+			.arg("git remote | grep 'mirror' | xargs -L1 git push --all")
 			.output()
 			.expect("Pushing failed!");
 
