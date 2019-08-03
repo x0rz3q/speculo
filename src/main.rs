@@ -5,6 +5,9 @@ use std::process::exit;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/**
+ * Print usage of speculo.
+ */
 fn print_usage() {
 	print!(
 		r#"Speculo 0.1.0
@@ -53,6 +56,11 @@ fn main() {
 	};
 }
 
+/**
+ * Add master repository to the speculo store.
+ *
+ * args - The arguments for the add command <2:url> <3:name?>
+ */
 fn add(args: Vec<String>) {
 	if args.len() < 3 {
 		print_usage();
@@ -93,6 +101,11 @@ fn add(args: Vec<String>) {
 	}
 }
 
+/**
+ * Add a mirror of a master repository.
+ *
+ * args - The argument for the mirror command <2: repo> <3:url>
+ */
 fn mirror(args: Vec<String>) {
 	if args.len() < 4 {
 		print_usage();
@@ -126,6 +139,9 @@ fn mirror(args: Vec<String>) {
 	}
 }
 
+/**
+ * Push all changes from the master repositories to the mirror repositories.
+ */
 fn push() {
 	for entry in fs::read_dir(env::current_dir().unwrap()).unwrap() {
 		let entry = entry.unwrap();
