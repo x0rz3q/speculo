@@ -2,6 +2,7 @@ use std::env;
 use std::process::exit;
 use std::path::Path;
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn print_usage() {
 	println!("Hello");
@@ -32,6 +33,7 @@ fn main() {
 
 	match command.as_ref() {
 		"add" => add(args),
+		"mirror" => mirror(args),
 		_ => {
 			print_usage();
 			exit(1);
@@ -62,14 +64,44 @@ fn add(args: Vec<String>) {
 	}
 
 	let output = Command::new("sh")
-			.arg("-c")
-			.arg(format!("git clone {} {}", url_str, name))
-			.output()
-			.expect("Clone of failed");
+						.arg("-c")
+						.arg(format!("git clone {} {}", url_str, name))
+						.output()
+						.expect("Clone of failed");
 
 	if output.status.success() {
 		println!("Successfully cloned into {}", name);
 	} else {
-		println!("{}", std::str::from_utf8(&output.stderr).unwrap());
+		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+	}
+}
+
+fn mirror(args: Vec<String>) {
+	if args.len() < 4 {
+		print_usage();
+		exit(1);
+	}
+
+	let repo = args.get(2).cloned().unwrap();
+	let url_str = args.get(3).cloned().unwrap();
+
+	if ! Path::new(&repo).exists() {
+		println!("{} does not exist", repo);
+		exit(1);
+	}
+
+	env::set_current_dir(&repo).unwrap();
+
+	let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+	let output = Command::new("sh")
+						.arg("-c")
+						.arg(format!("git remote add mirror-{} {}", now, url_str))
+						.output()
+						.expect("Clone failed!");
+
+	if output.status.success() {
+		println!("{} added as mirror to {}", url_str, repo);
+	} else {
+		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
 	}
 }
