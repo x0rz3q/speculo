@@ -90,7 +90,7 @@ fn add(args: Vec<String>) {
 
 	let output = Command::new("sh")
 		.arg("-c")
-		.arg(format!("git clone {} {}", url_str, name))
+		.arg(format!("git clone --mirror {} {}", url_str, name))
 		.output()
 		.expect("Clone of failed");
 
@@ -126,6 +126,7 @@ fn mirror(args: Vec<String>) {
 		.duration_since(UNIX_EPOCH)
 		.unwrap()
 		.as_secs();
+
 	let output = Command::new("sh")
 		.arg("-c")
 		.arg(format!("git remote add mirror-{} {}", now, url_str))
