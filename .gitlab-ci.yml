@@ -4,6 +4,7 @@ stages:
     - test
     - build
     - release
+    - deploy
 
 test:fmt:
     stage: test
@@ -26,3 +27,17 @@ release:cargo:
             - target/release/speculo
     only:
         - master
+
+deploy_prod:
+    stage: deploy
+    environment:
+        name: production
+    script:
+        - eval $(ssh-agent -s)
+        - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+        - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+        - cargo build --release
+        - scp target/release/speculo deploy@$DEPLOY_HOST:/usr/local/bin/speculo
+    when: manual
