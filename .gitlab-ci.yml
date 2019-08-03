@@ -2,7 +2,7 @@ image: "rust:latest"
 
 # Use cargo to test the project
 build:cargo:
-    stage:build
+    stage: build
     script:
         - rustc --version && cargo --version
         - cargo build
