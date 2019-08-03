@@ -153,15 +153,39 @@ fn push() {
 			continue;
 		}
 
+		/* check if the repository is a git mirror */
 		env::set_current_dir(path.clone()).unwrap();
+		let output = Command::new("sh")
+			.arg("-c")
+			.arg("git rev-parse --is-bare-repository")
+			.output()
+			.unwrap();
 
-		if !path.join(".git").exists() {
+		if !output.status.success() {
 			continue;
 		}
 
+		let result: String = std::str::from_utf8(&output.stdout).unwrap().to_string();
+		if result.contains("false") {
+			continue;
+		}
+
+		/* update the master repo */
 		let output = Command::new("sh")
 			.arg("-c")
-			.arg("git remote | grep 'mirror' | xargs -L1 git push --all")
+			.arg("git remote update origin")
+			.output()
+			.unwrap();
+
+		if !output.status.success() {
+			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+			continue;
+		}
+
+		/* update the mirrors */
+		let output = Command::new("sh")
+			.arg("-c")
+			.arg("git remote | grep 'mirror' | xargs -L1 git push --mirror")
 			.output()
 			.expect("Pushing failed!");
 
