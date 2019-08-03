@@ -5,4 +5,3 @@ authors = ["x0rz3q <jacob@x0rz3q.com>"]
 edition = "2018"
 
 [dependencies]
-git2 = "0.9"
