@@ -6,7 +6,17 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn print_usage() {
-	println!("Hello");
+	print!(
+		r#"Speculo 0.1.0
+x0rz3q <jacob@x0rz3q.com>
+Mirror git repositories
+
+SUBCOMMANDS:
+	add <url> <name?> - Add a base repository
+	mirror <repo> <url> - Mirror a git repository
+	push - Push all changes of the repositories
+"#
+	);
 }
 
 fn main() {
