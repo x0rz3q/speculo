@@ -3,6 +3,7 @@ image: "rust:latest"
 stages:
     - test
     - build
+    - release
 
 test:fmt:
     stage: test
@@ -15,3 +16,13 @@ build:cargo:
     script:
         - rustc --version && cargo --version
         - cargo build
+
+release:cargo:
+    stage: release
+    script:
+        - cargo build --release
+    artifacts:
+        paths:
+            - target/release/speculo
+    only:
+        - master
