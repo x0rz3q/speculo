@@ -3,6 +3,10 @@ name = "speculo"
 version = "0.1.0"
 authors = ["x0rz3q <jacob@x0rz3q.com>"]
 edition = "2018"
+license="AGPL"
+description="Manage git mirrors"
+documentation="..."
+homepage="https://x0rz3q.com/posts/speculo"
 
 [dependencies]
 
