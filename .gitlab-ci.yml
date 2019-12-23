@@ -9,7 +9,8 @@ stages:
 test:fmt:
     stage: test
     script:
-        - rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
+        - rustup toolchain install nightly
+        - rustup component add rustfmt --toolchain nightly
         - rustfmt +nightly --check src/*.rs
 build:cargo:
     stage: build
