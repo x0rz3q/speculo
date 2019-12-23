@@ -1,79 +1,83 @@
-use std::env;
-use std::fs;
-use std::path::Path;
-use std::process::exit;
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+extern crate clap;
 
-/**
- * Print usage of speculo.
- */
-fn print_usage() {
-	print!(
-		r#"Speculo 0.1.0
-x0rz3q <jacob@x0rz3q.com>
-Mirror git repositories
-
-SUBCOMMANDS:
-	add <url> <name?> - Add a base repository
-	mirror <repo> <url> - Mirror a git repository
-	push - Push all changes of the repositories
-"#
-	);
-}
+use clap::{App, Arg, SubCommand};
+use std::{
+	env, fs,
+	path::Path,
+	process::{exit, Command},
+	time::{SystemTime, UNIX_EPOCH},
+};
 
 fn main() {
-	let args: Vec<String> = env::args().collect();
+	let mut app = App::new("speculo")
+		.version("0.1.0")
+		.author("x0rz3q <jacob@x0rz3q.com>")
+		.about("Mirror git repositories")
+		.subcommand(
+			SubCommand::with_name("add")
+				.about("Add a base repository")
+				.arg(
+					Arg::with_name("repo")
+						.help("Repository URL (ssh)")
+						.required(true),
+				)
+				.arg(
+					Arg::with_name("name")
+						.help("Name of folder")
+						.required(false),
+				),
+		)
+		.subcommand(
+			SubCommand::with_name("mirror")
+				.about("Mirror a repository")
+				.arg(
+					Arg::with_name("base")
+						.help("The base repository name")
+						.required(true),
+				)
+				.arg(
+					Arg::with_name("repo")
+						.help("Repository URL (ssh)")
+						.required(true),
+				),
+		)
+		.subcommand(SubCommand::with_name("push").about("Push repositories"));
 
-	if args.len() == 1 {
-		print_usage();
-		exit(1);
-	}
+	let matches = app.clone().get_matches();
+	match matches.subcommand_name() {
+		Some("add") => {
+			let args = matches.subcommand_matches("add").unwrap();
+			let repo = args.value_of("repo").unwrap().to_string();
+			let name = match args.value_of("name") {
+				Some(name) => name.to_string(),
+				None => "".to_string(),
+			};
 
-	let command: String = args.get(1).cloned().unwrap();
-	let path = match env::var("SPECULO_PATH") {
-		Ok(path) => path,
-		Err(_) => {
-			println!("Please set the SPECULO_PATH env variable");
-			exit(1);
-		}
-	};
+			add(repo, name);
+		},
+		Some("mirror") => {
+			let args = matches.subcommand_matches("mirror").unwrap();
+			let base = args.value_of("base").unwrap().to_string();
+			let repo = args.value_of("repo").unwrap().to_string();
 
-	if !Path::new(&path).exists() {
-		println!("{} does not exist, please set SPECULO_PATH correctly", path);
-		exit(1);
-	}
-	env::set_current_dir(&path).unwrap();
-
-	match command.as_ref() {
-		"add" => add(args),
-		"mirror" => mirror(args),
-		"push" => push(),
+			mirror(base, repo);
+		},
+		Some("push") => push(),
 		_ => {
-			print_usage();
-			exit(1);
-		}
+			app.print_help().unwrap();
+			println!("");
+		},
 	};
 }
 
-/**
- * Add master repository to the speculo store.
- *
- * args - The arguments for the add command <2:url> <3:name?>
- */
-fn add(args: Vec<String>) {
-	if args.len() < 3 {
-		print_usage();
-		exit(1);
-	}
-
-	let url_str = args.get(2).cloned().unwrap();
-	let mut name: String;
-
-	if args.len() == 4 {
-		name = args.get(3).cloned().unwrap();
-	} else {
-		let split = url_str
+/// Add master repository to the speculo store.
+///
+/// url - The repository URL
+/// name - The name of the local folder
+fn add(url: String, name: String) {
+	let mut name = name;
+	if name.is_empty() {
+		let split = url
 			.split("/")
 			.collect::<Vec<&str>>()
 			.last()
@@ -90,7 +94,7 @@ fn add(args: Vec<String>) {
 
 	let output = Command::new("sh")
 		.arg("-c")
-		.arg(format!("git clone --mirror {} {}", url_str, name))
+		.arg(format!("git clone --mirror {} {}", url, name))
 		.output()
 		.expect("Clone of failed");
 
@@ -101,27 +105,17 @@ fn add(args: Vec<String>) {
 	}
 }
 
-/**
- * Add a mirror of a master repository.
- *
- * args - The argument for the mirror command <2: repo> <3:url>
- */
-fn mirror(args: Vec<String>) {
-	if args.len() < 4 {
-		print_usage();
+/// Add a mirror of a master repository.
+///
+/// base - The base name of the repository to mirror
+/// repo - The repository end point
+fn mirror(base: String, repo: String) {
+	if !Path::new(&base).exists() {
+		println!("{} does not exist", base);
 		exit(1);
 	}
 
-	let repo = args.get(2).cloned().unwrap();
-	let url_str = args.get(3).cloned().unwrap();
-
-	if !Path::new(&repo).exists() {
-		println!("{} does not exist", repo);
-		exit(1);
-	}
-
-	env::set_current_dir(&repo).unwrap();
-
+	env::set_current_dir(&base).unwrap();
 	let now = SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.unwrap()
@@ -129,20 +123,19 @@ fn mirror(args: Vec<String>) {
 
 	let output = Command::new("sh")
 		.arg("-c")
-		.arg(format!("git remote add mirror-{} {}", now, url_str))
+		.arg(format!("git remote add mirror-{} {}", now, repo))
 		.output()
 		.expect("Clone failed!");
 
 	if output.status.success() {
-		println!("{} added as mirror to {}", url_str, repo);
+		println!("{} added as mirror to {}", repo, base);
 	} else {
 		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
 	}
 }
 
-/**
- * Push all changes from the master repositories to the mirror repositories.
- */
+/// Push all changes from the master repositories to the mirror
+/// repositories.
 fn push() {
 	for entry in fs::read_dir(env::current_dir().unwrap()).unwrap() {
 		let entry = entry.unwrap();
@@ -153,7 +146,7 @@ fn push() {
 			continue;
 		}
 
-		/* check if the repository is a git mirror */
+		// check if the repository is a git mirror
 		env::set_current_dir(path.clone()).unwrap();
 		let output = Command::new("sh")
 			.arg("-c")
@@ -170,7 +163,7 @@ fn push() {
 			continue;
 		}
 
-		/* update the master repo */
+		// update the master repo
 		let output = Command::new("sh")
 			.arg("-c")
 			.arg("git remote update origin")
@@ -182,7 +175,7 @@ fn push() {
 			continue;
 		}
 
-		/* prune the master repo */
+		// prune the master repo
 		let output = Command::new("sh")
 			.arg("-c")
 			.arg("git remote prune origin")
@@ -194,7 +187,7 @@ fn push() {
 			continue;
 		}
 
-		/* update the mirrors */
+		// update the mirrors
 		let output = Command::new("sh")
 			.arg("-c")
 			.arg("git remote | grep 'mirror' | xargs -L1 git push --mirror")
