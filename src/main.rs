@@ -3,7 +3,7 @@ extern crate clap;
 use clap::{App, Arg, SubCommand};
 use std::{
 	env, fs,
-	path::Path,
+	path::{Path, PathBuf},
 	process::{exit, Command},
 	time::{SystemTime, UNIX_EPOCH},
 };
@@ -41,7 +41,15 @@ fn main() {
 						.required(true),
 				),
 		)
-		.subcommand(SubCommand::with_name("push").about("Push repositories"));
+		.subcommand(
+			SubCommand::with_name("push")
+				.about("Push repositories")
+				.arg(
+					Arg::with_name("name")
+						.help("The name of the repository to push")
+						.required(false),
+				),
+		);
 
 	let matches = app.clone().get_matches();
 	match matches.subcommand_name() {
@@ -62,7 +70,19 @@ fn main() {
 
 			mirror(base, repo);
 		},
-		Some("push") => push(),
+		Some("push") => {
+			let args = matches.subcommand_matches("push").unwrap();
+			let name = args.value_of("name");
+
+			if name.is_some() {
+				let name = name.unwrap();
+				let mut path = env::current_dir().unwrap();
+				path.push(name);
+				push(path);
+			} else {
+				push_all();
+			}
+		},
 		_ => {
 			app.print_help().unwrap();
 			println!("");
@@ -134,9 +154,67 @@ fn mirror(base: String, repo: String) {
 	}
 }
 
+fn push(path: PathBuf) {
+	// check if the repository is a git mirror
+	env::set_current_dir(path.clone()).unwrap();
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg("git rev-parse --is-bare-repository")
+		.output()
+		.unwrap();
+
+	if !output.status.success() {
+		return ();
+	}
+
+	let result: String = std::str::from_utf8(&output.stdout).unwrap().to_string();
+	if result.contains("false") {
+		return ();
+	}
+
+	// update the master repo
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg("git remote update origin")
+		.output()
+		.unwrap();
+
+	if !output.status.success() {
+		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+		return ();
+	}
+
+	// prune the master repo
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg("git remote prune origin")
+		.output()
+		.unwrap();
+
+	if !output.status.success() {
+		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+		return ();
+	}
+
+	// update the mirrors
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg("git remote | grep 'mirror' | xargs -L1 git push --mirror")
+		.output()
+		.expect("Pushing failed!");
+
+	if !output.status.success() {
+		println!(
+			"Push failed for {}",
+			path.file_name().unwrap().to_str().unwrap()
+		);
+		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+	}
+}
+
 /// Push all changes from the master repositories to the mirror
 /// repositories.
-fn push() {
+fn push_all() {
 	for entry in fs::read_dir(env::current_dir().unwrap()).unwrap() {
 		let entry = entry.unwrap();
 		let path = entry.path();
@@ -146,60 +224,6 @@ fn push() {
 			continue;
 		}
 
-		// check if the repository is a git mirror
-		env::set_current_dir(path.clone()).unwrap();
-		let output = Command::new("sh")
-			.arg("-c")
-			.arg("git rev-parse --is-bare-repository")
-			.output()
-			.unwrap();
-
-		if !output.status.success() {
-			continue;
-		}
-
-		let result: String = std::str::from_utf8(&output.stdout).unwrap().to_string();
-		if result.contains("false") {
-			continue;
-		}
-
-		// update the master repo
-		let output = Command::new("sh")
-			.arg("-c")
-			.arg("git remote update origin")
-			.output()
-			.unwrap();
-
-		if !output.status.success() {
-			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
-			continue;
-		}
-
-		// prune the master repo
-		let output = Command::new("sh")
-			.arg("-c")
-			.arg("git remote prune origin")
-			.output()
-			.unwrap();
-
-		if !output.status.success() {
-			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
-			continue;
-		}
-
-		// update the mirrors
-		let output = Command::new("sh")
-			.arg("-c")
-			.arg("git remote | grep 'mirror' | xargs -L1 git push --mirror")
-			.output()
-			.expect("Pushing failed!");
-
-		if !output.status.success() {
-			println!(
-				"Push failed for {}",
-				path.file_name().unwrap().to_str().unwrap()
-			);
-			print!("{}", std::str::from_utf8(&output.stderr).unwrap());
-		}
+		push(path);
 	}
 }
