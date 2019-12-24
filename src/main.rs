@@ -100,11 +100,27 @@ fn main() {
 	};
 }
 
+/// Expand a name to a file path
+///
+/// name - The name to expand
 fn expand_name(name: String) -> PathBuf {
 	let mut path = env::current_dir().unwrap();
 	path.push(name);
 
 	path
+}
+
+fn is_bare_repository(path: String) -> bool {
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg(format!(
+			"git --git-dir=\"{path}\" --work-tree=\"{path}\" rev-parse --is-bare-repository",
+			path = path
+		))
+		.output()
+		.unwrap();
+
+	output.status.success()
 }
 
 /// Add master repository to the speculo store.
@@ -142,15 +158,24 @@ fn add(url: String, name: String) {
 	}
 }
 
+/// Remove a repository
+///
+/// name - The name of the repository to remove
 fn remove(name: String) {
 	let path = expand_name(name.clone());
+	let path_str = path.to_str().unwrap().to_string();
+
+	if !is_bare_repository(path_str) {
+		println!("{} is not a git repo", name);
+		exit(1);
+	}
 
 	if !path.exists() {
 		println!("{} does not exist", name);
 		exit(1);
 	}
 
-	if !std::fs::remove_dir_all(path).is_ok() {
+	if std::fs::remove_dir_all(path).is_ok() {
 		println!("{} successfully removed", name);
 	} else {
 		println!("{} could not be removed", name);
@@ -189,13 +214,8 @@ fn mirror(base: String, repo: String) {
 fn push(path: PathBuf) {
 	// check if the repository is a git mirror
 	env::set_current_dir(path.clone()).unwrap();
-	let output = Command::new("sh")
-		.arg("-c")
-		.arg("git rev-parse --is-bare-repository")
-		.output()
-		.unwrap();
 
-	if !output.status.success() {
+	if !is_bare_repository(path.clone().to_str().unwrap().to_string()) {
 		return ();
 	}
 
