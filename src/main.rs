@@ -49,6 +49,13 @@ fn main() {
 						.help("The name of the repository to push")
 						.required(false),
 				),
+		)
+		.subcommand(
+			SubCommand::with_name("rm").about("Remove repository").arg(
+				Arg::with_name("name")
+					.help("The name of the repository to delete")
+					.required(true),
+			),
 		);
 
 	let matches = app.clone().get_matches();
@@ -75,19 +82,29 @@ fn main() {
 			let name = args.value_of("name");
 
 			if name.is_some() {
-				let name = name.unwrap();
-				let mut path = env::current_dir().unwrap();
-				path.push(name);
-				push(path);
+				push(expand_name(name.unwrap().to_string()));
 			} else {
 				push_all();
 			}
+		},
+		Some("rm") => {
+			let args = matches.subcommand_matches("rm").unwrap();
+			let name = args.value_of("name").unwrap();
+
+			remove(name.to_string());
 		},
 		_ => {
 			app.print_help().unwrap();
 			println!("");
 		},
 	};
+}
+
+fn expand_name(name: String) -> PathBuf {
+	let mut path = env::current_dir().unwrap();
+	path.push(name);
+
+	path
 }
 
 /// Add master repository to the speculo store.
@@ -122,6 +139,21 @@ fn add(url: String, name: String) {
 		println!("Successfully cloned into {}", name);
 	} else {
 		print!("{}", std::str::from_utf8(&output.stderr).unwrap());
+	}
+}
+
+fn remove(name: String) {
+	let path = expand_name(name.clone());
+
+	if !path.exists() {
+		println!("{} does not exist", name);
+		exit(1);
+	}
+
+	if !std::fs::remove_dir_all(path).is_ok() {
+		println!("{} successfully removed", name);
+	} else {
+		println!("{} could not be removed", name);
 	}
 }
 
