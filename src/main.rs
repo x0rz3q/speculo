@@ -42,6 +42,20 @@ fn main() {
 				),
 		)
 		.subcommand(
+			SubCommand::with_name("unlink")
+				.about("Unlink a mirrored repository")
+				.arg(
+					Arg::with_name("base")
+						.help("The base repository name")
+						.required(true),
+				)
+				.arg(
+					Arg::with_name("url")
+						.help("The url to unlink")
+						.required(true),
+				),
+		)
+		.subcommand(
 			SubCommand::with_name("push")
 				.about("Push repositories")
 				.arg(
@@ -86,6 +100,13 @@ fn main() {
 			} else {
 				push_all();
 			}
+		},
+		Some("unlink") => {
+			let args = matches.subcommand_matches("unlink").unwrap();
+			let url = args.value_of("url").unwrap().to_string();
+			let base = args.value_of("base").unwrap().to_string();
+
+			unlink(base, url);
 		},
 		Some("rm") => {
 			let args = matches.subcommand_matches("rm").unwrap();
@@ -277,5 +298,56 @@ fn push_all() {
 		}
 
 		push(path);
+	}
+}
+
+fn unlink(base: String, url: String) {
+	// git remote -v | grep "git@git.xoryo.nl:x0rz3q/speculo.gitz" | cut -f1 |
+	// head
+	//-n1
+	let path = expand_name(base.clone());
+	let path_str = path.to_str().unwrap().to_string();
+
+	if !is_bare_repository(path_str) {
+		println!("{} is not a repository", base);
+		exit(1);
+	}
+
+	env::set_current_dir(&path).unwrap();
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg(format!("git remote -v | grep {} | cut -f1 | head -n1", url))
+		.output()
+		.expect("Cannot fetch repository remotes");
+
+	if !output.status.success() {
+		println!("Unlinking failed for {} in {}", url, base);
+		exit(1);
+	}
+
+	let mirror: String = std::str::from_utf8(&output.stdout)
+		.unwrap()
+		.trim()
+		.to_string();
+
+	if mirror.is_empty() {
+		println!("{} not found in {}", url, base);
+		exit(1);
+	}
+
+	if mirror == "origin".to_string() {
+		println!("Cannot remove origin!");
+		exit(1);
+	}
+
+	let output = Command::new("sh")
+		.arg("-c")
+		.arg(format!("git remote remove {}", mirror))
+		.output()
+		.expect("Cannot remove remote");
+
+	if !output.status.success() {
+		println!("Cannot unlink {} from {}", url, base);
+		exit(1);
 	}
 }
