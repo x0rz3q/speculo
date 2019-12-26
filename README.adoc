@@ -1,0 +1,118 @@
+= Speculo
+:toc: preamble
+
+A small Rust program to manage git mirrors (one way).
+
+== Installation
+At the moment speculo can only be installed from source.
+
+[source,sh]
+----
+cd -- "$(mktemp -d)"
+git clone git@github.com:x0rz3q/speculo.git
+cd speculo
+cargo build --release
+sudo mv target/release/speculo /usr/local/bin
+----
+
+The executable will then be installed in `/usr/local/bin`
+
+== Usage
+The easiest way to view all subcommands is with `speculo --help`, this will
+give you information about all the subcommands. To view more information of a subcommand you can do `speculo {subcommand} --help`. For example, `speculo add --help` will show you all information about adding a base repository.
+
+=== Subcommands
+Everything in speculo is build up from subcommands, this way everything stays clean and easy to understand for the end user.
+
+==== add
+The `add` command allows you to add a base repository, this repository is the repository where all changes will be pushed to.
+
+[source,sh]
+----
+speculo add <repo> [name]
+----
+
+===== Example(s)
+[source,sh]
+----
+speculo add git@github.com:x0rz3q/speculo.git
+----
+
+this command will add the speculo repository as a base. It is possible to give the repository another name.
+
+[source,sh]
+----
+speculo add git@github.com:x0rz3q/speculo.git example
+----
+
+this will add the speculo repository as a base with the name `example`.
+
+==== mirror
+The `mirror` command allows you to add a mirror URL to a base repository.
+
+[source,sh]
+----
+speculo mirror <base> <name>
+----
+
+===== Example(s)
+[source,sh]
+----
+speculo mirror speculo git@github.com:x0rz3q/speculo-mirror.git
+----
+
+This will mirror the speculo-mirror repository from the speculo repository that is available on the local system.
+
+==== push
+The `push` command will push all changes from the base to the mirror(s).
+It is recommended to run this in a cron job, this way you do not have to do it manually.
+
+[source,sh]
+----
+speculo push [name]
+----
+
+===== Example(s)
+[source,sh]
+----
+speculo push
+----
+Pushes all repositories
+
+[source,sh]
+----
+speculo push speculo
+----
+
+Only pushes the repository with the name speculo.
+
+==== rm
+The `rm` command will remove a base repository and all mirrors from being managed by speculo. **This does not affect your actual repositories*.*
+[source,sh]
+----
+speculo rm <name>
+----
+
+===== Example(s)
+[source,sh]
+----
+speculo rm speculo
+----
+
+Will remove the speculo base repository from populating any more changes via the speculo software.
+
+==== unlink
+The `unlink` command will remove a mirror from a base repository.
+
+[source,sh]
+----
+speculo unlink <base> <url>
+----
+
+===== Example(s)
+[source,sh]
+----
+speculo unlink speculo git@github.com:x0rz3q/speculo-mirror.git
+----
+
+this will remove the mirror from the `speculo` repository. Speculo will not push any more changes to the `speculo-mirror` repository.
