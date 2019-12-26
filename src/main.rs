@@ -329,8 +329,14 @@ fn unlink(base: String, url: String) {
 		.unwrap()
 		.trim()
 		.to_string();
+
 	if mirror.is_empty() {
 		println!("{} not found in {}", url, base);
+		exit(1);
+	}
+
+	if mirror == "origin".to_string() {
+		println!("Cannot remove origin!");
 		exit(1);
 	}
 
