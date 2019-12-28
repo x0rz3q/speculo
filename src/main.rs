@@ -13,6 +13,13 @@ fn main() {
 		.version("0.2.1")
 		.author("x0rz3q <jacob@x0rz3q.com>")
 		.about("Mirror git repositories")
+		.arg(
+			Arg::with_name("path")
+				.env("SPECULO_PATH")
+				.required(true)
+				.short("p")
+				.long("path"),
+		)
 		.subcommand(
 			SubCommand::with_name("add")
 				.about("Add a base repository")
@@ -73,6 +80,14 @@ fn main() {
 		);
 
 	let matches = app.clone().get_matches();
+	let path = matches.value_of("path").unwrap();
+
+	if !Path::new(&path).exists() {
+		println!("Please make sure that SPECULO_PATH={} exists", path);
+		exit(1);
+	}
+	env::set_current_dir(&path).unwrap();
+
 	match matches.subcommand_name() {
 		Some("add") => {
 			let args = matches.subcommand_matches("add").unwrap();
