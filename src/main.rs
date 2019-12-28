@@ -10,7 +10,7 @@ use std::{
 
 fn main() {
 	let mut app = App::new("speculo")
-		.version("0.2.0")
+		.version("0.2.1")
 		.author("x0rz3q <jacob@x0rz3q.com>")
 		.about("Mirror git repositories")
 		.subcommand(
