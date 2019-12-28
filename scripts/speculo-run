@@ -1,0 +1,8 @@
+SHELL=/bin/bash
+MAILTO=root
+
+PATH="/usr/local/bin:/bin:/usr/bin"
+SPECULO_PATH="/var/lib/speculo"
+RUST_BACKTRACE=1
+
+*/10 * * * * speculo speculo push >> /var/log/cron.log 2>&1
